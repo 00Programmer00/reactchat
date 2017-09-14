@@ -5,23 +5,28 @@ export default class MessagesList extends Component{
         super(props);
         this.state = {
             messages: [],
-            nickname: ''
+            nickname: '',
+            status: true,
+            input: ''
         };
 
         this.connect = this.connect.bind(this);
         this.onChange = this.onChange.bind(this);
+        this.addMessage = this.addMessage.bind(this);
+        this.onChangeInput = this.onChangeInput.bind(this);
     }
 
     componentDidMount(){
     }
 
     connect() {
-        let socket = window.io('http://web.bidon-tech.com:65060');
-        socket.on('connect', () => {
+       this.socket = window.io('http://web.bidon-tech.com:65060');
+        this.setState({status: false});
+        this.socket.on('connect', () => {
             console.log('connected');
             let currentUser = this.state.nickname;
 
-            socket.emit('nickname', this.state.nickname, response => {
+            this.socket.emit('nickname', this.state.nickname, response => {
                 response.map((message) => {
                     let messages = [];
                     response.map((message) => {
@@ -29,15 +34,32 @@ export default class MessagesList extends Component{
                     });
                     this.setState({messages});
                 });
-                console.log('chat history', response);
             });
+
+
+            this.socket.on('message', message => {
+                this.setState({messages: [...this.state.messages, message]});
+            });
+
         });
     }
 
     onChange(e){
         e.preventDefault();
-        this.setState({nickname: e.target.value});
+        this.setState({[e.target.name] : e.target.value});
     }
+
+    onChangeInput(e){
+        e.preventDefault();
+        this.setState({input : e.target.value});
+    }
+
+    addMessage(e){
+        e.preventDefault();
+            this.socket.emit('message', this.state.input);
+            this.setState({input: ''});
+        }
+
 
     render(){
         const messages = this.state.messages.map((message, i) =>{
@@ -55,8 +77,11 @@ export default class MessagesList extends Component{
                 <header className="contact">
                     <section className="contact--details" id="Head">
                         <h1 className="contact--details__name online">Flex-box Chat!</h1>
-                        <input type="text" placeholder="Login..." id="Login" onChange={this.onChange}/>
-                            <button onClick={this.connect} id="logbtn">Log in</button>
+
+                        { this.state.status ? <input type="text" name="nickname" placeholder="Login..." id="Login" onChange={this.onChange}/> : null }
+                        { this.state.status ? <button onClick={this.connect} id="logbtn">Log in</button> : null }
+                        { this.state.status ? null : <h1>Hello in our chat: {this.state.nickname}</h1> }
+
                     </section>
                 </header>
                 <section className="messages" id="messagesDiv">
@@ -66,8 +91,8 @@ export default class MessagesList extends Component{
                     </section>
                 </section>
                 <form action="">
-                    <input type="text" placeholder="Your message" id="inputField"/>
-                    <button id="Send" >Send</button>
+                    <input type="text" onChange={this.onChangeInput} value={this.state.input} placeholder="Your message" id="inputField"/>
+                    <button id="Send" onClick={this.addMessage}>Send</button>
                 </form>
             </div>
         )
